@@ -10,6 +10,8 @@
 
 A client-side proof validator for discrete mathematics. Built with Astro, PyScript/WASM, and Python. No backend required — everything runs in your browser.
 
+Link (Cloudflare): https://proof-it.icecoldhq.workers.dev/
+
 ## What it does
 
 Proof It checks the structural correctness of mathematical proofs across 8 chapters of discrete math, plus a general reasoning sandbox and a training mode.
