@@ -1,0 +1,267 @@
+---
+import '../styles/global.css';
+---
+
+<!DOCTYPE html>
+<html lang="en" data-theme="system">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Proof It</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+    <script is:inline src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+    <script is:inline src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js"></script>
+    <script is:inline src="https://cdn.jsdelivr.net/pyodide/v0.26.2/full/pyodide.js"></script>
+    <style>
+        .trainer-answer {
+            background: var(--bg-secondary, #f5f5f5);
+            border-left: 4px solid var(--accent, #4a90d9);
+            padding: 1rem;
+            margin-top: 1rem;
+            border-radius: 4px;
+        }
+        .trainer-answer p {
+            margin: 0.5rem 0;
+        }
+        [data-theme="dark"] .trainer-answer {
+            background: #2a2a2a;
+            border-left-color: #6ab0f3;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>Proof It</h1>
+            <div class="header-controls">
+            <select id="mode-select">
+                <option value="engine.py">Mode 1: Syntax Check</option>
+                <option value="m2_ch1_proofs.py">Mode 2: Ch 1 — Proof Techniques</option>
+                <option value="m3_ch2_wop.py">Mode 3: Ch 2 — Well Ordering</option>
+                <option value="m4_ch3_logic.py">Mode 4: Ch 3 — Logical Formulas</option>
+                <option value="m5_ch4_data.py">Mode 5: Ch 4 — Data Types</option>
+                <option value="m6_ch5_induction.py">Mode 6: Ch 5 — Induction</option>
+                <option value="m7_ch6_state_machines.py">Mode 7: Ch 6 — State Machines</option>
+                <option value="m8_ch7_recursive_types.py">Mode 8: Ch 7 — Recursive Types</option>
+                <option value="m9_ch8_infinite_sets.py">Mode 9: Ch 8 — Infinite Sets</option>
+                <option value="m10_reasoning_sandbox.py">Mode 10: Reasoning Sandbox</option>
+                <option value="m11_trainer.py">Mode 11: Trainer</option>
+            </select>
+                <button id="theme-toggle" aria-label="Toggle dark mode">Toggle</button>
+            </div>
+        </header>
+
+        <main>
+            <div class="input-section">
+                <label for="proof-input">Enter proof steps:</label>
+                <textarea 
+                    id="proof-input" 
+                    rows="12" 
+                    placeholder="1. Theorem: If P then Q&#10;2. Proof. Assume P.&#10;3. Therefore Q.&#10;4. ∎"
+                ></textarea>
+                <button id="check-btn" disabled>
+                    <span class="btn-text">Check Proof</span>
+                    <span class="btn-loading">Loading Python...</span>
+                </button>
+                                <div class="preview-section">
+                    <h3>Live Preview</h3>
+                    <div id="preview"></div>
+                </div>
+            </div>
+
+            <div class="results-section">
+                <h2>Results</h2>
+                <div id="results">
+                    <p class="placeholder">Python runtime loading...</p>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script is:inline>
+        const html = document.documentElement;
+        const toggle = document.getElementById('theme-toggle');
+        const saved = localStorage.getItem('theme');
+        const systemDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+        
+        if (saved === 'dark' || (!saved && systemDark)) {
+            html.setAttribute('data-theme', 'dark');
+        } else {
+            html.setAttribute('data-theme', 'light');
+        }
+        
+        toggle.addEventListener('click', () => {
+            const current = html.getAttribute('data-theme');
+            const next = current === 'dark' ? 'light' : 'dark';
+            html.setAttribute('data-theme', next);
+            localStorage.setItem('theme', next);
+        });
+
+        let pyodideReady = false;
+        let pyodide;
+        let currentModule = 'engine.py';
+        let currentTrainerData = null;
+
+        async function loadModule(moduleName) {
+            if (!pyodide) return;
+            const btn = document.getElementById('check-btn');
+            const results = document.getElementById('results');
+            
+            btn.disabled = true;
+            btn.classList.remove('ready');
+            results.innerHTML = '<p class="placeholder">Loading module...</p>';
+            
+            try {
+                const response = await fetch('/' + moduleName);
+                const code = await response.text();
+                pyodide.runPython(code);
+                currentModule = moduleName;
+                btn.disabled = false;
+                btn.classList.add('ready');
+                results.innerHTML = '<p class="placeholder">Ready. Enter steps and click Check.</p>';
+            } catch (err) {
+                results.innerHTML = '<p class="error">Failed to load module: ' + err.message + '</p>';
+                console.error(err);
+            }
+        }
+
+        async function initPyodide() {
+            const results = document.getElementById('results');
+            
+            try {
+                pyodide = await loadPyodide();
+                await loadModule('engine.py');
+                pyodideReady = true;
+            } catch (err) {
+                results.innerHTML = '<p class="error">Failed to load Python: ' + err.message + '</p>';
+                console.error(err);
+            }
+        }
+
+        initPyodide();
+
+        document.getElementById('mode-select').addEventListener('change', (e) => {
+            if (pyodideReady) {
+                loadModule(e.target.value);
+            }
+        });
+
+        document.getElementById('check-btn').addEventListener('click', () => {
+            if (!pyodideReady) return;
+            
+            const input = document.getElementById('proof-input').value.trim();
+            const results = document.getElementById('results');
+            const firstLine = input.split('\n')[0].toLowerCase().trim();
+            
+            // Trainer reveal: if user types "reveal" and we have stored data, show it
+            if ((firstLine === 'reveal' || firstLine.startsWith('check')) && currentTrainerData) {
+                const data = JSON.parse(currentTrainerData);
+                let html = '<div class="overall invalid">';
+                html += '<strong>Answer Revealed</strong>';
+                html += '</div>';
+                html += '<div class="trainer-answer">';
+                html += '<p><strong>Proof:</strong> ' + escapeHtml(data.name) + '</p>';
+                html += '<p><strong>Flawed:</strong> ' + (data.flawed ? 'Yes' : 'No') + '</p>';
+                html += '<p><strong>Explanation:</strong> ' + escapeHtml(data.explanation) + '</p>';
+                html += '</div>';
+                results.innerHTML = html;
+                return;
+            }
+            
+            // Normal Python validation
+            try {
+                pyodide.globals.set('input_text', input);
+                
+                let resultJson;
+                if (currentModule === 'engine.py') {
+                    resultJson = pyodide.runPython(`
+import json
+steps = parse_input(input_text)
+json.dumps(validate(steps))
+                    `);
+                } else {
+                    resultJson = pyodide.runPython(`
+import json
+steps = parse_input(input_text)
+json.dumps(validate(steps))
+                    `);
+                }
+                
+                const resultObj = JSON.parse(resultJson);
+                
+                // Store trainer data if present
+                if (resultObj.technique === 'trainer' && resultObj.trainer_data) {
+                    currentTrainerData = resultObj.trainer_data;
+                }
+                
+                renderResults(resultObj);
+            } catch (err) {
+                results.innerHTML = '<p class="error">Error: ' + err.message + '</p>';
+                console.error(err);
+            }
+        });
+
+        function renderResults(result) {
+            const container = document.getElementById('results');
+            let html = '';
+            
+            html += '<div class="overall ' + (result.valid ? 'valid' : 'invalid') + '">';
+            html += '<strong>' + (result.valid ? 'Valid' : 'Invalid') + '</strong>';
+            html += '<span>' + result.overall_reason + '</span>';
+            html += '</div>';
+            
+            if (result.technique) {
+                html += '<p class="technique">Detected: ' + result.technique.replace(/_/g, ' ') + '</p>';
+            }
+            
+            html += '<ul class="step-list">';
+            for (const step of result.step_results) {
+                html += '<li class="step ' + (step.ok ? 'ok' : 'fail') + '">';
+                html += '<span class="step-num">Step ' + step.number + '</span>';
+                html += '<span class="step-status">' + (step.ok ? 'OK' : step.reason) + '</span>';
+                html += '</li>';
+            }
+            html += '</ul>';
+            
+            container.innerHTML = html;
+        }
+
+        // Live Preview
+        const textarea = document.getElementById('proof-input');
+        const preview = document.getElementById('preview');
+
+        function updatePreview() {
+            const lines = textarea.value.split('\n').filter(l => l.trim());
+            let html = '';
+            for (const line of lines) {
+                const match = line.match(/^(\d+)\.\s*(.*)/);
+                if (match) {
+                    html += '<div class="step-line"><span class="step-num">' + match[1] + '.</span>' + escapeHtml(match[2]) + '</div>';
+                } else {
+                    html += '<div class="step-line">' + escapeHtml(line) + '</div>';
+                }
+            }
+            preview.innerHTML = html || '<span style="color:var(--muted);font-style:italic;">Start typing to see preview...</span>';
+            
+            if (window.renderMathInElement) {
+                renderMathInElement(preview, {
+                    delimiters: [
+                        {left: '$$', right: '$$', display: true},
+                        {left: '$', right: '$', display: false}
+                    ],
+                    throwOnError: false
+                });
+            }
+        }
+
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        textarea.addEventListener('input', updatePreview);
+        updatePreview();
+    </script>
+</body>
+</html>
