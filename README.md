@@ -1,39 +1,76 @@
-# Proof It — M1 Validator Skeleton
+> **AI Collaboration Notice:** This project was built using an augmented
+> collaboration model. The human author owns all proof logic, mathematical
+> reasoning, and rule modules. The AI assistant (Kimi by Moonshot AI)
+> contributed the Astro scaffolding, PyScript integration, UI components,
+> and deployment configuration. See `NOTICE` for the full disclosure.
 
-## Quick Start
+---
+
+# Proof It
+
+A client-side proof validator for discrete mathematics. Built with Astro, PyScript/WASM, and Python. No backend required — everything runs in your browser.
+
+## What it does
+
+Proof It checks the structural correctness of mathematical proofs across 8 chapters of discrete math, plus a general reasoning sandbox and a training mode.
+
+| Mode | What it checks |
+|---|---|
+| M1 | Syntax and step numbering |
+| M2 | Proof techniques (implication, iff, cases, contradiction) |
+| M3 | Well-Ordering Principle structure |
+| M4 | Logical formulas (AND/OR/NOT/implies/equivalence) |
+| M5 | Mathematical data types (sets, functions, relations) |
+| M6 | Induction (ordinary vs. strong, base case, IH, inductive step) |
+| M7 | State machines (invariant preservation, termination via derived variables) |
+| M8 | Recursive data types (structural induction) |
+| M9 | Infinite sets (diagonalization, countability, cardinality fallacies) |
+| M10 | Reasoning Sandbox — informal fallacies and thinking traps |
+| M11 | Trainer — generate flawed or valid proofs to spot errors |
+
+## How to use
+
+1. Pick a mode from the dropdown.
+2. Type your proof steps (one per line, numbered).
+3. Click **Check Proof**.
+4. The validator tells you what is missing, out of order, or structurally wrong.
+
+### Trainer mode
+
+1. Select **Mode 11: Trainer**.
+2. Type `generate [category] [difficulty]` (e.g., `generate induction mixed`).
+3. Analyze the proof yourself.
+4. Type `reveal` to see the answer.
+
+## Tech stack
+
+- **Astro** — static site shell
+- **PyScript / Pyodide (WASM)** — Python engine running client-side
+- **KaTeX** — math rendering
+- **localStorage** — theme persistence
+- **Cloudflare Pages** — deployment target
+
+## Local development
 
 ```bash
 npm install
 npm run dev
 ```
 
-Open http://localhost:4321
-
-## What You Edit
-
-- `public/engine.py` — The Python validator. **This is your file.**
-- `src/styles/global.css` — Colors and layout (if you want to tweak visuals).
-
-## How It Works
-
-1. Type proof steps in the text box.
-2. Click **Check Proof**.
-3. Pyodide (Python in the browser) loads `engine.py` and runs your `parse_input` and `validate` functions.
-4. Results appear in the panel below.
-
-## Deploy to Cloudflare Pages
+## Build
 
 ```bash
 npm run build
 ```
 
-Upload the `dist/` folder to Cloudflare Pages.
+## Deploy
 
-## M1 Rules (in engine.py)
+```bash
+npm run deploy
+```
 
-- Steps must not be empty.
-- Step numbers must be sequential (1, 2, 3...).
+Or connect the GitHub repo to Cloudflare Pages for auto-deploy on push.
 
-## Next: M2
+## License
 
-When M1 works, you will add a new Python module for propositional logic. Kimi will show you exactly where to plug it in.
+MIT. See `LICENSE`.
